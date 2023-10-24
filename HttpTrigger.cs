@@ -17,7 +17,7 @@ namespace newshub.functions;
 public static class HttpTrigger
 {
     [FunctionName("GetArticle")]
-    public static IActionResult GetArticle([HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/get/id/{id}")] HttpRequest req, ILogger log, string id)
+    public static IActionResult GetArticle([HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/get/{id}")] HttpRequest req, ILogger log, string id)
     {
         CosmosClient cosmosClient = null;
 
@@ -70,7 +70,7 @@ public static class HttpTrigger
 
 #region Update
     [FunctionName("UpdateArticle")]
-    public static async Task<IActionResult> UpdateArticle([HttpTrigger(AuthorizationLevel.Function, "put", Route = "articles/update/id/{id}")] HttpRequest req)
+    public static async Task<IActionResult> UpdateArticle([HttpTrigger(AuthorizationLevel.Function, "put", Route = "articles/update/{id}")] HttpRequest req)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var updatedArticle = JsonConvert.DeserializeObject<Article>(requestBody);
@@ -95,7 +95,7 @@ public static class HttpTrigger
 #region Delete
     [FunctionName("DeleteArticle")]
     public static async Task<IActionResult> DeleteArticle(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "articles/delete/id/{id}")] HttpRequest req, string id)
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "articles/delete/{id}")] HttpRequest req, string id)
     {
         using CosmosClient cosmosClient = new(
             connectionString: Environment.GetEnvironmentVariable("CONNECTION_STRING_SETTING"),

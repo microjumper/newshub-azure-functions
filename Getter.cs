@@ -11,17 +11,17 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 
 using newshub.types;
+using newshub.functions.utils;
 
 namespace newshub.functions;
 
 public static class Getter
 {
-    private static readonly IMemoryCache cache = new MemoryCache(new MemoryCacheOptions());
     private static int totalRecords = 0;
 
     [FunctionName("GetAll")]
     public static async Task<IActionResult> GetAll(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/get/all/{limit:int}/{offset:int}")] HttpRequest  req,
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/all/{limit:int}/{offset:int}")] HttpRequest  req,
         ILogger log, 
         int limit, 
         int offset)
@@ -31,18 +31,18 @@ public static class Getter
             return new BadRequestObjectResult("Invalid input parameters");
         }
 
-        string cacheKey = $"-{limit}-{offset}";
+        string cacheKey = "totalRecords";
 
         Container container = CosmosClientManager.Instance.GetContainer("newshub", "articles");
 
-        if (!cache.TryGetValue(cacheKey, out totalRecords))
+        if (!CacheManager.Instance.TryGetValue(cacheKey, out totalRecords))
         {
             try
             {
-                var countQuery = new QueryDefinition("SELECT * FROM c");
+                var countQuery = new QueryDefinition("SELECT VALUE COUNT(1) FROM c");
                 var countResponse = await container.GetItemQueryIterator<int>(countQuery).ReadNextAsync();
                 totalRecords = countResponse.FirstOrDefault();
-                cache.Set(cacheKey, totalRecords, TimeSpan.FromMinutes(10));
+                CacheManager.Instance.Set(cacheKey, totalRecords, TimeSpan.FromMinutes(10));
             }
             catch (Exception e)
             {
@@ -53,7 +53,7 @@ public static class Getter
 
         try
         {
-            var query = new QueryDefinition("SELECT * FROM c, OFFSET @offset LIMIT @limit")
+            var query = new QueryDefinition("SELECT * FROM c OFFSET @offset LIMIT @limit")
             .WithParameter("@offset", offset * limit)
             .WithParameter("@limit", limit);
 
