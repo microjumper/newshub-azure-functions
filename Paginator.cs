@@ -11,7 +11,7 @@ namespace newshub.functions;
 
 public static class Paginator
 {
-    [FunctionName("GetArticles")]
+    [FunctionName("GetArticlesOLD")]
     public static async Task<IActionResult> GetArticles(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/get/all")] HttpRequest  req)
     {
@@ -26,7 +26,7 @@ public static class Paginator
         return new OkObjectResult(articles);
     }
 
-    [FunctionName("Search")]
+    [FunctionName("SearchOLD")]
     public static async Task<IActionResult> Search(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/search/{search:alpha}")] HttpRequest  req,
         string search)
