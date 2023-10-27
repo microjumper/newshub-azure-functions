@@ -19,13 +19,11 @@ public static class HttpTrigger
     [FunctionName("GetArticle")]
     public static IActionResult GetArticle([HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/get/{id}")] HttpRequest req, ILogger log, string id)
     {
-        CosmosClient cosmosClient = null;
-
         try 
         {
             Container container = CosmosClientManager.Instance.GetContainer("newshub", "articles");
 
-            Article article = GetArticleById(container, id);
+            Article article = container.GetItemLinqQueryable<Article>(true).Where(a => a.Id == id).AsEnumerable().FirstOrDefault();
         
             if (article != null)
             {
@@ -37,60 +35,47 @@ public static class HttpTrigger
         catch (Exception e)
         {
             log.LogError(e.Message);
-
             return new StatusCodeResult(500);
-        }
-        finally
-        {
-            cosmosClient?.Dispose();
         }
     }
 
-    private static Article GetArticleById(Container container, string id)
-    {
-        return container.GetItemLinqQueryable<Article>(true).Where(a => a.Id == id).AsEnumerable().FirstOrDefault();
-    } 
-
-#region Add
     [FunctionName("AddArticle")]
     public static async Task<IActionResult> AddArticle(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "articles/add")] HttpRequest req,
-        [CosmosDB(
-            databaseName: "%DATABASE_NAME%",
-            collectionName: "%COLLECTION_NAME%",
-            ConnectionStringSetting = "CONNECTION_STRING_SETTING"
-        )] IAsyncCollector<Article> articles, ILogger log)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "articles/add")] HttpRequest req, ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var newArticle = JsonConvert.DeserializeObject<Article>(requestBody);
-        await articles.AddAsync(newArticle);
-        return new OkObjectResult(newArticle);
-    }
-#endregion
 
-#region Update
+        try {
+            var container = CosmosClientManager.Instance.GetContainer("newshub", "articles");
+            newArticle.Id = Guid.NewGuid().ToString();
+            var response = await container.CreateItemAsync(newArticle, new PartitionKey(newArticle.Id));
+            return new OkObjectResult(response.Resource);
+        }
+        catch (Exception e)
+        {
+            log.LogError(e.Message);
+            return new StatusCodeResult(500);
+        }
+    }
+
     [FunctionName("UpdateArticle")]
-    public static async Task<IActionResult> UpdateArticle([HttpTrigger(AuthorizationLevel.Function, "put", Route = "articles/update/{id}")] HttpRequest req)
+    public static async Task<IActionResult> UpdateArticle([HttpTrigger(AuthorizationLevel.Function, "put", Route = "articles/update/{id}")] HttpRequest req, ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var updatedArticle = JsonConvert.DeserializeObject<Article>(requestBody);
 
-        using CosmosClient cosmosClient = new(
-            connectionString: Environment.GetEnvironmentVariable("CONNECTION_STRING_SETTING"),
-            new CosmosClientOptions()
-            {
-                SerializerOptions = new CosmosSerializationOptions()
-                {
-                    PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
-                }
-            }
-        );
-        var container = cosmosClient.GetContainer("newshub", "articles");
-        var response = await container.ReplaceItemAsync(updatedArticle, updatedArticle.Id, new PartitionKey(updatedArticle.Id));
-
-        return new OkObjectResult(response.Resource);
+        try {
+            var container = CosmosClientManager.Instance.GetContainer("newshub", "articles");
+            var response = await container.ReplaceItemAsync(updatedArticle, updatedArticle.Id, new PartitionKey(updatedArticle.Id));
+            return new OkObjectResult(response.Resource);
+        }
+        catch (Exception e)
+        {
+            log.LogError(e.Message);
+            return new StatusCodeResult(500);
+        }
     }
-#endregion
 
 #region Delete
     [FunctionName("DeleteArticle")]
