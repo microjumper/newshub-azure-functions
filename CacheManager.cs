@@ -5,12 +5,12 @@ namespace newshub.functions.utils;
 
 public static class CacheManager
 {
-    private static Lazy<IMemoryCache> lazyCache = new (new MemoryCache(new MemoryCacheOptions()));
+    private static readonly Lazy<MemoryCache> lazyCache = new (new MemoryCache(new MemoryCacheOptions()));
     
-    public static IMemoryCache Instance => lazyCache.Value;
+    public static MemoryCache Instance => lazyCache.Value;
 
     public static void Invalidate()
     {
-        CacheManager.lazyCache = new (new MemoryCache(new MemoryCacheOptions()));
+        Instance.Compact(1);    // Remove at least the given percentage (0.10 for 10%) of the total entries
     }
 }
