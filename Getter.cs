@@ -53,7 +53,7 @@ public static class Getter
 
         try
         {
-            var query = new QueryDefinition("SELECT * FROM c OFFSET @offset LIMIT @limit")
+            var query = new QueryDefinition("SELECT * FROM c ORDER BY c.publishedAt DESC OFFSET @offset LIMIT @limit")
             .WithParameter("@offset", offset * limit)
             .WithParameter("@limit", limit);
 

@@ -55,7 +55,7 @@ public static class Searcher
 
         try
         {
-            var query = new QueryDefinition("SELECT * FROM c WHERE CONTAINS(LOWER(c.title), LOWER(@searchTerm)) OFFSET @offset LIMIT @limit")
+            var query = new QueryDefinition("SELECT * FROM c WHERE CONTAINS(LOWER(c.title), LOWER(@searchTerm)) ORDER BY c.publishedAt DESC OFFSET @offset LIMIT @limit")
             .WithParameter("@searchTerm", search)
             .WithParameter("@offset", offset * limit)
             .WithParameter("@limit", limit);
