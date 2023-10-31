@@ -12,6 +12,7 @@ using Microsoft.Extensions.Caching.Memory;
 
 using newshub.types;
 using newshub.functions.utils;
+using System.Net;
 
 namespace newshub.functions;
 
@@ -21,9 +22,9 @@ public static class Searcher
 
     [FunctionName("Search")]
     public static async Task<IActionResult> Search(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/search/{search:alpha}/{limit:int}/{offset:int}")] HttpRequest  req,
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "articles/search/{encodedSearchTerms}/{limit:int}/{offset:int}")] HttpRequest  req,
         ILogger log, 
-        string search, 
+        string encodedSearchTerms, 
         int limit, 
         int offset)
     {
@@ -32,16 +33,19 @@ public static class Searcher
             return new BadRequestObjectResult("Invalid input parameters");
         }
 
-        string cacheKey = $"{search}".ToLower().GetHashCode().ToString();
+        string decodedSearchTerms = WebUtility.UrlDecode(encodedSearchTerms);
+        string cacheKey = $"{decodedSearchTerms}".ToLower().GetHashCode().ToString();
 
         Container container = CosmosClientManager.Instance.GetContainer("newshub", "articles");
+
+        var searchWords = decodedSearchTerms.Split(" ");
+        var condition = string.Join(" OR ", searchWords.Select(word => $"CONTAINS(c.title, '{word}', true)"));
 
         if (!CacheManager.Instance.TryGetValue(cacheKey, out totalRecords))
         {
             try
             {
-                var countQuery = new QueryDefinition("SELECT VALUE COUNT(1) FROM c WHERE CONTAINS(LOWER(c.title), LOWER(@searchTerm))")
-                    .WithParameter("@searchTerm", search);
+                var countQuery = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c WHERE {condition}");
                 var countResponse = await container.GetItemQueryIterator<int>(countQuery).ReadNextAsync();
                 totalRecords = countResponse.FirstOrDefault();
                 CacheManager.Instance.Set(cacheKey, totalRecords, TimeSpan.FromMinutes(10));
@@ -55,8 +59,7 @@ public static class Searcher
 
         try
         {
-            var query = new QueryDefinition("SELECT * FROM c WHERE CONTAINS(LOWER(c.title), LOWER(@searchTerm)) ORDER BY c.publishedAt DESC OFFSET @offset LIMIT @limit")
-            .WithParameter("@searchTerm", search)
+            var query = new QueryDefinition($"SELECT * FROM c WHERE {condition} ORDER BY c.publishedAt DESC OFFSET @offset LIMIT @limit")
             .WithParameter("@offset", offset * limit)
             .WithParameter("@limit", limit);
 
