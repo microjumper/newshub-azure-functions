@@ -32,7 +32,7 @@ public static class Searcher
             return new BadRequestObjectResult("Invalid input parameters");
         }
 
-        string cacheKey = $"{search}-{limit}-{offset}";
+        string cacheKey = $"{search}".ToLower().GetHashCode().ToString();
 
         Container container = CosmosClientManager.Instance.GetContainer("newshub", "articles");
 
