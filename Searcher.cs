@@ -39,7 +39,7 @@ public static class Searcher
         Container container = CosmosClientManager.Instance.GetContainer("newshub", "articles");
 
         var searchWords = decodedSearchTerms.Split(" ");
-        var condition = string.Join(" OR ", searchWords.Select(word => $"CONTAINS(c.title, '{word}', true)"));
+        var condition = string.Join(" AND ", searchWords.Select(word => $"CONTAINS(c.title, '{word}', true)"));
 
         if (!CacheManager.Instance.TryGetValue(cacheKey, out totalRecords))
         {
