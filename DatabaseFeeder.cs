@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using newshub.types;
+using newshub.functions.utils;
 
 namespace newshub.functions;
 
@@ -36,6 +37,8 @@ public static class DatabaseFeeder
                 return new BadRequestObjectResult("Failed to add item to Cosmos DB");
             }
         }
+
+        CacheManager.Invalidate();
 
         return new OkObjectResult(articles);
     }
